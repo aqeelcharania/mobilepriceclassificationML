@@ -1,0 +1,583 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import collections
+import numpy as np
+import pandas as pd
+
+
+# In[2]:
+
+
+my_trainingdataset= pd.read_csv('train.csv') #reading train.csv
+
+
+# In[3]:
+
+
+my_testingdataset= pd.read_csv('test.csv') #reading test.csv
+
+
+# In[4]:
+
+
+my_trainingdataset.info() #info of training dataset
+
+
+# In[5]:
+
+
+my_testingdataset.info() #info of testing dataset
+
+
+# In[6]:
+
+
+#will visualize some data. 
+#We can do co-relationship of data
+
+
+# In[7]:
+
+
+#first relationship:- Ram and Price range
+
+
+# In[8]:
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.countplot(x = "price_range", data = my_trainingdataset)
+sns.set_theme(style="whitegrid")
+sns.color_codes=True,
+sns.font_scale=1
+sns.palette='deep'
+plt.show()
+
+
+# In[9]:
+
+
+plot_graph = sns.FacetGrid(my_trainingdataset, col="price_range", hue="price_range", palette="deep",height=6, col_wrap=3)
+plot_graph = (plot_graph.map(sns.distplot, "ram").add_legend())
+
+
+# In[10]:
+
+
+#this gives us a clear idea about the price range with relation with the RAM of the phone
+#in the dataset, there are four types of price distribution. 0 being the lowest and 3 being the heighest. 
+#the bar graph above shows a complete positive correlation between the ram and the price of the phone.
+#as the ram increases the price of the phone also increases. 
+
+
+# In[11]:
+
+
+#second relationship:- The power of the battery(size of the battery) and Price range
+
+
+# In[12]:
+
+
+plot_graph = sns.FacetGrid(my_trainingdataset, col="price_range", hue="price_range", palette="deep",height=6, col_wrap=3)
+plot_graph = (plot_graph.map(sns.distplot, "battery_power").add_legend())
+
+
+# In[13]:
+
+
+#Graph shows that the maximum price of the phone is of which the battery is the highest in the entire dataset. 
+#we can see the price range in comparision with the amount of ram in the price range considering the battery power in it. 
+#we need to use a scatter plot as we are comparing three features. 
+plot_graph = sns.FacetGrid(my_trainingdataset,hue = 'price_range', height = 12)
+plot_graph.map(plt.scatter, 'ram','battery_power',alpha = 1)
+plot_graph.add_legend()
+
+
+# In[14]:
+
+
+#In scatter graph the x-axis is ram and the y-axis is the battery_power. We can see that ram has more effect on price than the
+#battery power. That can be seen from the scatter plot that, the more price(3) can be seen towards where ram is more. 
+
+
+# In[15]:
+
+
+#find null values if any in train.csv
+print(round(my_trainingdataset.isnull().sum()/len(my_trainingdataset)),2)
+
+
+# In[16]:
+
+
+#as we have identified there are no null values we can do splitting
+#we are spliting the independent and the dependent variables
+X = my_trainingdataset.drop('price_range', axis = 1) #dropping the price_range dataset
+y = my_trainingdataset['price_range']
+
+
+# In[17]:
+
+
+# Creating training and test data
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X,y, train_size= 0.6, test_size= 0.4, random_state = 0) #0.6 and 0.4
+#because it cant be greater than 1
+
+
+# In[18]:
+
+
+# Storing the column names  for train and test
+X_train_col = X_train.columns
+
+X_test_col = X_test.columns
+
+
+# In[19]:
+
+
+#data then needs to be converted into array
+
+X_train, y_train = np.array(X_train), np.array(y_train)
+
+
+# In[20]:
+
+
+#we will now use the standard scaler to scale the training and testing dataset
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+
+
+# In[21]:
+
+
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.fit_transform(X_test)
+
+
+# In[22]:
+
+
+#we will now reverse back the array into dataframe
+X_train = pd.DataFrame(X_train, columns = X_train_col)
+X_test = pd.DataFrame(X_test, columns = X_test_col)
+
+
+# In[23]:
+
+
+my_trainingdataset.info()
+
+
+# In[24]:
+
+
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2
+
+
+X = my_trainingdataset.iloc[:,0:20]  #independent variables
+y = my_trainingdataset.iloc[:,-1]
+
+
+# In[25]:
+
+
+my_trainingdataset.head()
+
+
+# In[26]:
+
+
+#we will apply the  SelectKBest to get the best 12 features
+        
+BestFeatures = SelectKBest(score_func=chi2, k=12)
+plot = BestFeatures.fit(X,y)
+
+
+# In[27]:
+
+
+features_number = pd.DataFrame(X.columns)
+score_received = pd.DataFrame(plot.scores_)
+
+
+# In[28]:
+
+
+#concatenating two dataframes for better visualization
+
+f_Scores_1 = pd.concat([features_number,score_received],axis=1)      #we used concat as we are dealing with scores and features 
+f_Scores_1.columns = ['Features','Received scores on features']
+
+
+# In[29]:
+
+
+f_Scores_1
+
+
+# In[30]:
+
+
+#printing top 12 features
+print(f_Scores_1.nlargest(12,'Received scores on features')) 
+
+
+# In[31]:
+
+
+#According to the feature selection, Ram is the best feature.
+
+
+# In[32]:
+
+
+#as we have done the splitting standarscaling, and feature selection we can start building the classification model for our dataset.
+#in this particular dataset we are using accuracy as the metric of comparision and not using the precision.
+#this is because if we wanted to focus on one category of the phone precision would be a better option. Since, the price classification of 
+#our model doesnt rely on one category we need to consider most of them.
+#the first classification method is decision tree.
+from sklearn.tree import DecisionTreeClassifier
+model_decisiontree = DecisionTreeClassifier()
+model_decisiontree.fit(X_train, y_train)
+
+
+# In[33]:
+
+
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+
+pred_model = model_decisiontree.predict(X_test)
+
+con_matr = confusion_matrix(pred_model, y_test)
+print("Printing the Confusion Matrix")
+print(con_matr)
+print("\n")
+print(f'Accuracy of confusion matrix: {accuracy_score(pred_model, y_test)*100} %')
+
+
+# In[34]:
+
+
+a = con_matr[0,0]
+b = con_matr[0,1]
+c = con_matr[1,1]
+d = con_matr[1,0]
+
+accuracy  = (a + c) / (a + b + c + d) #math formula
+precision = c / (b + c)
+recall    = c / (c + d)
+
+print(f'Accuracy : {accuracy*100} %')
+print()
+print('*'*50)
+print()
+print('we will also find precision and recall')
+
+print(f'Precision: {precision*100} %')
+print(f'Recall   : {recall*100} %')
+print('*'*50)
+
+
+# In[35]:
+
+
+#random forest classifer
+from sklearn.ensemble import RandomForestClassifier
+
+
+# In[36]:
+
+
+model = RandomForestClassifier(class_weight='balanced')
+
+
+# In[37]:
+
+
+#parameters used in this model
+max_depth = [2,10,20]
+criterion = ['gini','entropy'] 
+#gini- Tests the probability of mis-labeling of any variable in the dataset when randomly marked.
+#entropy- shows the disorder of the target's features
+min_samples_split = [2,3,5,7,9,10]
+max_features = [2,4,6,8,10,12]
+
+
+# In[38]:
+
+
+#definimg the grid and implementing the grid search.
+#grid search might take some time.
+
+from sklearn.model_selection import KFold
+from sklearn.model_selection import GridSearchCV
+
+grid = dict(max_depth = max_depth, criterion = criterion, min_samples_split = min_samples_split, max_features = max_features)
+cv = KFold(n_splits = 5) #number of folds used for cross validation
+
+grid_search = GridSearchCV(estimator = model, param_grid = grid, cv = cv,n_jobs = -1)
+grid_result = grid_search.fit(X_train, y_train)
+
+
+# In[39]:
+
+
+#printing the criterion, max_Depth, max_features and min_samples_split used. 
+#the best possible outcome changes after every grid search. 
+
+get_poss= (grid_result.best_score_, grid_result.best_params_)
+
+print("Best possible outcome: %f using %s" % (get_poss))
+
+
+# In[64]:
+
+
+#best possible outcome predicted- check
+#we used classification_Report library for this classification
+getres = RandomForestClassifier(criterion = 'entropy', max_depth = 20, max_features = 12, min_samples_split = 7)
+getres.fit(X_train, y_train)
+prediction_rf = getres.predict(X_test)
+
+from sklearn.metrics import classification_report
+print('Best estimated Accuracy of the Random Forest is {0}%'.format(round(((accuracy_score(y_test, prediction_rf)*100)),3)))
+accuracy_ofrf = accuracy_score(y_test, prediction_rf)
+print('-'*50)
+print('\n')
+print('Model Report:')
+print('-'*50)
+print(classification_report(y_test, prediction_rf))
+
+
+# In[41]:
+
+
+#checking other possibility
+getres_1 = RandomForestClassifier(criterion = 'entropy', max_depth = 20, max_features = 2, min_samples_split = 5)
+getres_1.fit(X_train, y_train)
+prediction_rf_1 = getres_1.predict(X_test)
+
+
+print('Randomly selected Accuracy of the Random Forest is {0}%'.format(round(((accuracy_score(y_test, prediction_rf_1)*100)),3)))
+accuracy_ofrf = accuracy_score(y_test, prediction_rf_1)
+print('-'*50)
+print('\n')
+print('Model Report:')
+print('-'*50)
+print(classification_report(y_test, prediction_rf_1))
+
+
+# In[42]:
+
+
+#we could say that the estimated accuracy is better
+
+
+# In[43]:
+
+
+#Naive Bayes Classifier
+#we used classification_Report library for this classification
+from sklearn.naive_bayes import GaussianNB
+model = GaussianNB()
+var_smoothing = np.logspace(0,-9, num=100)
+
+#estimating the best var_smoothing
+grid = dict(var_smoothing = var_smoothing)
+cv = KFold(n_splits = 5)
+
+grid_search = GridSearchCV(estimator = model, param_grid = grid,n_jobs = -1, cv = cv)
+grid_result = grid_search.fit(X_train, y_train)
+
+
+# In[44]:
+
+
+print("Best var_smoothining accuracy %f using %s "%(grid_result.best_score_, grid_result.best_params_))
+
+
+# In[45]:
+
+
+#following the best var_smoothing predicted
+naive_bais = GaussianNB(var_smoothing = 0.1)
+naive_bais.fit(X_train, y_train)
+naive_bais_predict = naive_bais.predict(X_test)
+print('Best estimated Accuracy of the Naive Bayes is {0} %'.format(round(((accuracy_score(y_test, naive_bais_predict))*100),3)))
+naive_bais_accuracy = accuracy_score(y_test, naive_bais_predict)
+print('-'*50)
+print('\n')
+print('Model Report:')
+print('-'*50)
+print(classification_report(y_test, naive_bais_predict))
+
+
+# In[46]:
+
+
+#using random value of var_smoothing
+naive_bais = GaussianNB(var_smoothing = 0.6)
+naive_bais.fit(X_train, y_train)
+naive_bais_predict = naive_bais.predict(X_test)
+print('Best estimated Accuracy of the Naive Bayes is {0} %'.format(round(((accuracy_score(y_test, naive_bais_predict))*100),3)))
+naive_bais_accuracy = accuracy_score(y_test, naive_bais_predict)
+print('-'*50)
+print('\n')
+print('Model Report:')
+print('-'*50)
+print(classification_report(y_test, naive_bais_predict))
+
+
+# In[47]:
+
+
+#we could say that the estimated accuracy is better
+
+
+# In[48]:
+
+
+#KNN classifier
+#KNN can have the lowest possible accuracy
+
+from sklearn.neighbors import KNeighborsClassifier
+classifier = KNeighborsClassifier(n_neighbors = 10, metric = 'minkowski', p =2) #Minkowski Distance is used
+classifier.fit(X_train, y_train)
+
+
+# In[49]:
+
+
+store_prediction = classifier.predict(X_test)
+classifier_knn = confusion_matrix(y_test, store_prediction)
+print(classifier_knn)
+
+
+# In[50]:
+
+
+accuracy= accuracy_score(y_test,store_prediction)
+print('Accuracy of KNN with minkowski metrics:-')
+print(accuracy*100)
+#Report
+print()
+print('Report:- ')
+print('*'*50)
+report_KNN = classification_report(y_test, store_prediction)
+print(report_KNN)
+
+
+# In[51]:
+
+
+#we will try using the cosine metric too. This might increase the accuracy
+classifier = KNeighborsClassifier(n_neighbors = 10, metric = 'cosine', p =2) #cosine Distance is used
+classifier.fit(X_train, y_train)
+store_prediction = classifier.predict(X_test)
+classifier_knn = confusion_matrix(y_test, store_prediction)
+print(classifier_knn)
+print()
+print()
+accuracy= accuracy_score(y_test,store_prediction)
+print('Accuracy of KNN with cosine metrics:-')
+print(accuracy*100)
+#Report
+print()
+print('Report:- ')
+print('*'*50)
+report_KNN = classification_report(y_test, store_prediction)
+print(report_KNN)
+
+
+# In[52]:
+
+
+#the accuracy with the cosine metrics is more as compared to the Minkowski
+
+
+# In[53]:
+
+
+#all the classifiers are done. Now we can try doing crosstabulation. 
+#The variable chosen here are four_g and dual sim. We can find does every phone with four_g have dual sim or not. 
+import pandas as pd
+100*pd.crosstab(my_trainingdataset['four_g'], my_trainingdataset['dual_sim'], rownames=['4G'],margins = True, margins_name = 'Total',
+                 normalize = True).round(3)
+
+
+# In[54]:
+
+
+# Now we can do the Subsetting of the data to identify which price class of phone dont have four_g and dual_sim
+sub_df = my_trainingdataset[(my_trainingdataset['dual_sim']==0) & (my_trainingdataset['four_g']==0)]
+sub_df.head()
+
+
+# In[55]:
+
+
+#the above table shows there are no phones which doesnt have both 4g and dual sim.
+sub_df['price_range'].value_counts()
+
+
+# In[56]:
+
+
+# We will add another column with the name of price range so that it will be easy for interpreatation
+price_map = {0:'Low Cost', 1:'Medium Cost', 2:'High Cost', 3:'Most Expensive'}
+
+my_trainingdataset['price_range_discription'] = my_trainingdataset['price_range'].map(price_map)
+
+
+# In[57]:
+
+
+
+my_trainingdataset.tail()
+
+
+# In[58]:
+
+
+#a new coloumn was added successfully
+
+
+# In[59]:
+
+
+#repeting the crosstabulation, because we added new row
+100*pd.crosstab(my_trainingdataset['four_g'], my_trainingdataset['dual_sim'], rownames=['4G'],margins = True, margins_name = 'Total',
+                 normalize = True).round(3)
+
+
+# In[60]:
+
+
+# Now we can do the Subsetting of the data to identify which price class of phone dont have four_g and dual_sim
+arrange = my_trainingdataset[(my_trainingdataset['dual_sim']==0) & (my_trainingdataset['four_g']==0)]
+arrange.head()
+
+
+# In[61]:
+
+
+#the above table shows there are no phones which doesnt have both 4g and dual sim.
+arrange['price_range_discription'].value_counts()
+
+
+# In[ ]:
+
+
+
+
